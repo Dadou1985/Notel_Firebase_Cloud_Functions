@@ -42,7 +42,22 @@ const updateRooms = ((documentId) => {
     return roomAvailable 
 })
 
+const updateMood = ((mood, userId) => {
+    const db = admin.firestore()
+    return db.collection("IziLife")
+    .doc("FunSpace")
+    .collection("communIzi")
+    .where("userId", "==", userId)
+    .doc()
+    .update({
+        mood: mood
+    })
+})
 
+exports.notificationOnCreateUser = functions.auth.user().onCreate((user) => {
+    const notif = "Votre inscription a été validé avec succès, " + user.username + " ! Vous pouvez vous connecter à l'application."
+    return createNotifications(notif, user.displayName)
+});
 
 
 exports.listenOverbooking = functions.firestore
@@ -57,7 +72,6 @@ exports.listenOverbooking = functions.firestore
 
  return createNotifications(notification, hotelRef)
 })
-
 
 exports.listenOverbooking2 = functions.firestore
 .document('hotels/{hotelId}/overbooking/{tables}/overbookOut/{Id}')
@@ -97,6 +111,17 @@ exports.roomUpdate = functions.firestore
 
 })
 
+exports.updateUserMood = functions.firestore
+    .document('iziUsers/{userID}')
+    .onUpdate((change, context) => { 
+      // Get an object with the previous document value (for update or delete)
+      const nextUserDetails = change.after.data();
+      const newMood = nextUserDetails.mood
+      const userId = nextUserDetails.userId
+        return updateMood(newMood, userId)
+      // perform desired operations ...
+    });
+
 exports.userDelete = functions.firestore
 .document('hotels/{hotelId}/Users/{userId}')
 .onDelete((snap, contex) => {
@@ -104,6 +129,28 @@ exports.userDelete = functions.firestore
     const userId = deletedValue.userId
 
     return deleteUser(userId);
+})
+
+exports.createIziUser = functions.firestore
+.document('hotels/{hotelId}/users/{Id}')
+.onCreate((snap, context) => {
+    const userData = snap.data()
+    const name = userData.id
+    const userId = userData.userId
+    const refHotel = userData.refHotel
+    const db = admin.firestore()
+
+    return db.collection("iziUsers")
+    .doc(name)
+    .set({
+        userId: userId,
+        refHotel: refHotel,
+        isConnected: true,
+        job: null,
+        hotelName: null,
+        mood: null,
+        favoriteMovie: null
+    })
 })
 
 
